@@ -2,10 +2,28 @@ const core = require('@actions/core')
 const github = require('@actions/github')
 const exec = require('@actions/exec')
 
+/**
+ * Get changelog path with ichef git flow:
+ * - if it's `release/x.y.z` or `hotfix/x.y.z` -> changelog should be `changelogs/x.y.md`
+ * - otherwise -> changelog should be 'CHANGELOG.md'
+ */
+function getIchefChangeLogPath() {
+    const pullRequest = github.context.payload.pull_request
+    const baseRef = pullRequest.base.ref
+    const baseRefIsReleaseBranch = baseRef.startsWith('release/');
+    const baseRefIsHotfixBranch = baseRef.startsWith('hotfix/');
+    if (baseRefIsReleaseBranch || baseRefIsHotfixBranch) {
+        const fullReleaseVersion = baseRef.split('/')[1];
+        const releaseVersionUpToMinor = fullReleaseVersion.split('.').slice(0, 2).join('.');
+        return `changelogs/${releaseVersionUpToMinor}.md`;
+    }
+    return 'CHANGELOG.md';
+}
+
 module.exports.enforce = async function() {
     try {
         const skipLabel = core.getInput('skipLabel')
-        const changeLogPath = core.getInput('changeLogPath')
+        let changeLogPath = core.getInput('changeLogPath') || getIchefChangeLogPath();
         core.info(`Skip Label: ${skipLabel}`)
         core.info(`Changelog Path: ${changeLogPath}`)
 
