@@ -3,19 +3,39 @@ const path = require('path')
 const core = require('@actions/core')
 const exec = require('@actions/exec')
 
+/**
+ * This will set the pull request file path to process.env.GITHUB_EVENT_PATH.
+ * GITHUB_EVENT_PATH is used in `@actions/github` package to get the pull request event data.
+ * `@actions/github` is used in changelog-enforcer.js to get branch info.
+ * @param {string} pullRequestFileName 
+ */
 function setGithubActionEvent(pullRequestFileName) {
   const eventPath = path.resolve(__dirname, pullRequestFileName)
   process.env.GITHUB_EVENT_PATH = eventPath
 }
+
+/**
+ * Unset process.env.GITHUB_EVENT_PATH.
+ */
 function unsetGithubActionEvent() {
   delete process.env.GITHUB_EVENT_PATH;
 }
 
+/**
+ * This group of test is from original changelog-enforcer repo:
+ * https://github.com/dangoslen/changelog-enforcer/blob/50bc88b4d83b1bfffba40793a491e9f0823dd7af/__tests__/changelog-enforcer.test.js#L8-L97
+ */
 describe('for normal pull-request', () => {
   let changelogEnforcer
   let inputs = {}
   beforeAll(() => {
     setGithubActionEvent('pull_request.json')
+    /**
+     * jest.isolateModules enables us to repeatedly require modules without cache.
+     * See: https://jestjs.io/docs/en/jest-object#jestisolatemodulesfn.
+     * Because we'd like to test against pull request event in different base branch,
+     * we'd need to require fresh changelog enforcer in different test.
+     */
     jest.isolateModules(() => {
       changelogEnforcer = require('../src/changelog-enforcer')
     })
@@ -108,6 +128,10 @@ M       CHANGELOG.md`
   })
 });
 
+/**
+ * Following is new test in our fork,
+ * to make sure the changelog path is correct given different base branch.
+ */
 describe.each`
   baseBranch     | targetChangelogPath | mockEventFileName
   ${'develop'}        | ${'CHANGELOG.md'}        | ${'pull_request_base_on_develop.json'}
